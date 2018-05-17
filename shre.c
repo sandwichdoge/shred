@@ -14,37 +14,20 @@ author : sandwichdoge@gmail.com
 #include <sys/stat.h>
 
 
-char* generate_random_data(int datalen){
+char* generate_random_data(int nDataLen){
 	srand(time(NULL));
-	char c;
-	char* tmp = malloc(datalen * sizeof(char)); //add 1 for \0 if i want a string
+	char _c;
+	char* tmp = malloc(nDataLen * sizeof(char)); //add 1 for \0 if i want a string
 	char* ret;
 	ret = tmp;
-	for(int i = 0; i<datalen; ++i){
-		c = rand() % (126 + 1 - 1) + 1;
-		*(tmp+i) = c;
+	for(int i = 0; i<nDataLen; ++i){
+		_c = rand() % (126 + 1 - 1) + 1;
+		*(tmp+i) = _c;
 	}
-	//*(tmp+datalen) = '\0';  //not necessary but jic i want random string sized $datalen
+	//*(tmp+nDataLen) = '\0';  //not necessary but jic i want random string sized $nDataLen
 	//printf("buf len %lu\n", strlen(ret));
 
 	return ret;
-}
-
-
-size_t file_get_size(char* sTargetFile)
-{
-	size_t sz;
-	FILE *fd;
-	fd = fopen(sTargetFile, "rb");
-	if (fd == NULL)
-	{
-		printf("problem opening file.\n");
-		return 0;
-	}
-	fseek(fd, 0, SEEK_END);
-	sz = ftell(fd);
-	fclose(fd);
-	return sz; //in bytes
 }
 
 
@@ -60,6 +43,23 @@ char* repeat_char(char _c, int nCount, int isRawData)
 	if (isRawData == 0)
 		*(ret+nCount) = '\0';
 	return ret;
+}
+
+
+size_t file_get_size(char* sTargetFile)
+{
+	size_t Sz;
+	FILE *_fp;
+	_fp = fopen(sTargetFile, "rb");
+	if (_fp == NULL)
+	{
+		printf("problem opening file.\n");
+		return 0;
+	}
+	fseek(_fp, 0, SEEK_END);
+	Sz = ftell(_fp);
+	fclose(_fp);
+	return Sz;  //in bytes
 }
 
 
@@ -79,7 +79,7 @@ int shred_file(char* sTargetFile)
 			for(int i = 1; i<=Sz_kB; ++i)
 			{
 				if (i==Sz_kB)
-					nBufferSz = Sz % 1024;
+					nBufferSz = Sz % 1024;  //exact size of last buffer
 				else
 					nBufferSz = 1024;
 				if(nPass == 1)       //1st pass = zero data
