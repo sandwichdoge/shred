@@ -16,16 +16,14 @@ author : sandwichdoge@gmail.com
 
 char* generate_random_data(int nDataLen){
 	srand(time(NULL));
-	char _c;
-	char* tmp = malloc(nDataLen * sizeof(char)); //add 1 for \0 if i want a string
-	char* ret;
-	ret = tmp;
+	char  _c;
+	char* ret = malloc(nDataLen * sizeof(char)); //add 1 for \0 if i want a string
+
 	for(int i = 0; i<nDataLen; ++i){
 		_c = rand() % (126 + 1 - 1) + 1;
-		*(tmp+i) = _c;
+		*(ret+i) = _c;
 	}
-	//*(tmp+nDataLen) = '\0';  //not necessary but jic i want random string sized $nDataLen
-	//printf("buf len %lu\n", strlen(ret));
+	//*(ret+nDataLen) = '\0';  //not necessary but jic i want random string with size of $nDataLen
 
 	return ret;
 }
@@ -71,6 +69,7 @@ int shred_file(char* sTargetFile)
 	if (Sz == 0)
 		return -1;
 	size_t Sz_kB = Sz/1024 + (Sz%1024!=0);  //round up, number of buffers needed
+
 	for (int nPass = 1; nPass <= 2; ++nPass)
 	{
 		int fp = open(sTargetFile, O_WRONLY);
@@ -82,7 +81,7 @@ int shred_file(char* sTargetFile)
 					nBufferSz = Sz % 1024;  //exact size of last buffer
 				else
 					nBufferSz = 1024;
-				if(nPass == 1)       //1st pass = zero data
+				if     (nPass == 1)       //1st pass = zero data
 					tBuffer = repeat_char('\0', nBufferSz, 1);
 				else if(nPass == 2)  //2nd pass = write random data
 					tBuffer = generate_random_data(nBufferSz);
@@ -101,23 +100,81 @@ int shred_file(char* sTargetFile)
 	return 0;
 }
 
+
+char c_separator()
+{
+	#ifdef _WIN32  //windows dir separator
+		return '\\';
+	#else
+		return '/';
+	#endif
+}
+
+
+char* get_file_dir(char* sFilePath, int isLastSeparatorIncluded)
+{
+	char* ptr;
+	ptr = strrchr(sFilePath, c_separator());
+	if (isLastSeparatorIncluded == 1)
+		++ptr;  //include last separator e.g. home/user/myfolder/
+	size_t _len = strlen(ptr);
+	size_t _retSz = strlen(sFilePath) - _len;
+	char* ret = malloc(_retSz + 1);
+	memcpy(ret, sFilePath, _retSz);
+	*(ret+_retSz) = '\0';  //null terminate result string
+	return ret;
+}
+
+
+char* get_file_name(char* sFilePath)
+{
+	char *ptr = malloc(strlen(sFilePath) + 1);
+	ptr = strrchr(sFilePath, c_separator());
+	++ptr;  //do not include last separator
+	return ptr;
+}
+
+
 void main(int argc, char **argv){
-	
-	if (argc != 2)
+	if (argc == 1 || strcmp(argv[1], "--help") == 0 || strstr(argv[1], "?"))
 	{
-		printf("usage: %s <file_path>\n", argv[0]);
+		printf( "Desc  : Securely erase your data\n"
+				"Author: sandwichdoge@gmail.com\n\n"
+				"usage     : %s <file_path> [-d]\n"
+				"parameters:\n\n"
+				"-d:	delete file after shredding.\n", argv[0]);
 		return;
 	}
 	char* sTargetPath = argv[1];
-	
 	size_t Sz = file_get_size(sTargetPath);
-	printf("filename %s -", sTargetPath);
+	if (Sz == 0)
+	{
+		printf("file '%s' does not exist.\n", sTargetPath);
+		return;
+	}
+
+	printf("filename %s - ", sTargetPath);
 	printf("%zu bytes\n", Sz);
 	printf("shredding in progress..\n");
+
 	if (shred_file(sTargetPath) == -1)
 		printf("failed to shred file %s\n", sTargetPath);
 	else
+		{
+		for (int i = 1; i < argc; ++i)
+		{
+			if (strcmp("-d", argv[i]) == 0)  //'-d' as argument -> rename and delete file
+			{
+				printf("scramling filename and removing file..\n");
+				char* sOldFileDir = get_file_dir(sTargetPath, 1);
+				char* sNewFileName = repeat_char('a', (int)(strlen(get_file_name(sTargetPath))), 0);
+				char* sNewFilePath = strcat(sOldFileDir, sNewFileName);
+				rename(sTargetPath, sNewFilePath);
+				remove(sNewFilePath);
+			}
+		}
 		printf("finished shredding.\n");
-
+		}
 	return;
 }
+
