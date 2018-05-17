@@ -3,5 +3,5 @@ Securely scramble file without truncating it
 
 Usage:
 ```
-shre <file_name>
+<whatever_name_you_use_to_build_it> <file_name>
 ```
