@@ -3,7 +3,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
-#include "stringops.h"
+#ifndef stringops
+#define stringops
+#endif
 
 int is_directory(char* sPath)
 {
@@ -19,6 +21,38 @@ int is_directory(char* sPath)
     return ret;
 }
 
+char c_separator()
+{
+	#ifdef _WIN32  //windows dir separator
+		return '\\';
+	#else
+		return '/';
+	#endif
+}
+
+
+char* get_file_dir(char* sFilePath, int isLastSeparatorIncluded)
+{
+	char* ptr;
+	ptr = strrchr(sFilePath, c_separator());
+	if (isLastSeparatorIncluded == 1)
+		++ptr;  //include last separator e.g. home/user/myfolder/
+	size_t _len = strlen(ptr);
+	size_t _retSz = strlen(sFilePath) - _len;
+	char* ret = malloc(_retSz + 1);
+	memcpy(ret, sFilePath, _retSz);
+	*(ret+_retSz) = '\0';  //null terminate result string
+	return ret;
+}
+
+
+char* get_file_name(char* sFilePath)
+{
+	char *ptr = malloc(strlen(sFilePath) + 1);
+	ptr = strrchr(sFilePath, c_separator());
+	++ptr;  //do not include last separator
+	return ptr;
+}
 
 void list_dir(char* path)
 {

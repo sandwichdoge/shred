@@ -1,6 +1,6 @@
 /*
 program: file shredder
-desc   : securely scramble file without truncating it
+desc   : securely scramble file/directory without truncating it
 author : sandwichdoge@gmail.com
 */
 
@@ -14,20 +14,21 @@ author : sandwichdoge@gmail.com
 #include <dirent.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include "stringops.h"
 #include "dirnav.h"
 
 
 char* generate_random_data(const int nDataLen){
+	//TODO: better randomization, possibly more patterns
 	srand(time(NULL));
 	char  _c;
-	char* ret = malloc(nDataLen * sizeof(char)); //add 1 for \0 if i want a string
+	char* ret = malloc(nDataLen * sizeof(char));
 	register int i;
 
 	for(i = 0; i<nDataLen; ++i){
 		_c = rand() % (253 + 1 - 1) + 1;
 		*(ret+i) = _c;
 	}
-	//*(ret+nDataLen) = '\0';  //not necessary but jic i want random string with size of $nDataLen
 
 	return ret;
 }
@@ -63,6 +64,24 @@ size_t file_get_size(char* sTargetFile)
 	fclose(_fp);
 	return Sz;  //in bytes
 }
+
+
+//[SECTION: CUSTOM FILE OP]
+
+void remove_file(char* sTargetPath)
+{
+	char* sOldFileDir = get_file_dir(sTargetPath, 1);
+	char* sNewFileName = repeat_char('a', (int)(strlen(get_file_name(sTargetPath))), 0);
+	char* sNewFilePath = str_cat(sOldFileDir, sNewFileName);
+	rename(sTargetPath, sNewFilePath);
+	if (is_directory(sTargetPath))
+		rmdir(sTargetPath);
+	else
+		remove(sNewFilePath);
+	free(sNewFilePath);
+	return;
+}
+//[END OF SECTION: CUSTOM FILE OP]
 
 
 int shred_file(char* sTargetFile)
@@ -104,55 +123,6 @@ int shred_file(char* sTargetFile)
 	return 0;
 }
 
-//[SECTION: CUSTOM FILE OP]
-char c_separator()
-{
-	#ifdef _WIN32  //windows dir separator
-		return '\\';
-	#else
-		return '/';
-	#endif
-}
-
-char* get_file_dir(char* sFilePath, int isLastSeparatorIncluded)
-{
-	char* ptr;
-	ptr = strrchr(sFilePath, c_separator());
-	if (isLastSeparatorIncluded == 1)
-		++ptr;  //include last separator e.g. home/user/myfolder/
-	size_t _len = strlen(ptr);
-	size_t _retSz = strlen(sFilePath) - _len;
-	char* ret = malloc(_retSz + 1);
-	memcpy(ret, sFilePath, _retSz);
-	*(ret+_retSz) = '\0';  //null terminate result string
-	return ret;
-}
-
-
-char* get_file_name(char* sFilePath)
-{
-	char *ptr = malloc(strlen(sFilePath) + 1);
-	ptr = strrchr(sFilePath, c_separator());
-	++ptr;  //do not include last separator
-	return ptr;
-}
-
-void remove_file(char* sTargetPath)
-{
-	char* sOldFileDir = get_file_dir(sTargetPath, 1);
-	char* sNewFileName = repeat_char('a', (int)(strlen(get_file_name(sTargetPath))), 0);
-	char* sNewFilePath = str_cat(sOldFileDir, sNewFileName);
-	rename(sTargetPath, sNewFilePath);
-	if (is_directory(sTargetPath))
-		rmdir(sTargetPath);
-	else
-		remove(sNewFilePath);
-	free(sNewFilePath);
-	return;
-}
-//[END OF SECTION: CUSTOM FILE OP]
-
-
 void shred_dir(char* path, int isRecursive, int isDelete)
 {
     //recursive
@@ -186,14 +156,15 @@ void shred_dir(char* path, int isRecursive, int isDelete)
 }
 
 
+
 void show_help(char* command)
 {
 	printf( "Desc  : Securely erase your data\n"
 				"Author: sandwichdoge@gmail.com\n\n"
-				"usage     : %s <file_path> [-d]\n"
+				"usage     : %s <file/directory_path> [-r] [-d]\n"
 				"parameters:\n\n"
-				"-d:	scramble name and delete target after shredding.\n"
-				"-r:	recursive", command);
+				"-r:	recursive"
+				"-d:	scramble name and delete target after shredding.\n", command);
 	return;
 }
 
@@ -215,15 +186,21 @@ void main(int argc, char **argv){
 			isDelete = 1;
 	}
 
+	//target is a directory
+	char x[2];
+	printf("this will shred all files and subfolders within this directory. procceed? y/n.");
+	scanf("%s", x);
+	if (strcmp(x, "n") == 0)
+		return;
 	if (is_directory(sTargetPath)){
 		shred_dir(sTargetPath, isRecursive, isDelete);
 		printf("directory %s has been shredded, recursive = %d\n", sTargetPath, isRecursive);
 		return;
 	}
 
+	//target is a file
 	size_t Sz = file_get_size(sTargetPath);
-	if (Sz == 0)
-	{
+	if (Sz == 0){
 		printf("'%s' does not exist.\n", sTargetPath);
 		return;
 	}
