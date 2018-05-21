@@ -22,7 +22,7 @@ char* generate_random_data(const int nDataLen){
 	//TODO: better randomization, possibly more patterns
 	srand(time(NULL));
 	char  _c;
-	char* ret = malloc(nDataLen * sizeof(char));
+	char* ret = malloc(nDataLen);
 	register int i;
 
 	for(i = 0; i<nDataLen; ++i){
@@ -66,22 +66,19 @@ size_t file_get_size(char* sTargetFile)
 }
 
 
-//[SECTION: CUSTOM FILE OP]
-
 void remove_file(char* sTargetPath)
 {
 	char* sOldFileDir = get_file_dir(sTargetPath, 1);
 	char* sNewFileName = repeat_char('a', (int)(strlen(get_file_name(sTargetPath))), 0);
 	char* sNewFilePath = str_cat(sOldFileDir, sNewFileName);
 	rename(sTargetPath, sNewFilePath);
-	if (is_directory(sTargetPath))
-		rmdir(sTargetPath);
+	if (is_directory(sNewFilePath))
+		rmdir(sNewFilePath);
 	else
 		remove(sNewFilePath);
 	free(sNewFilePath);
 	return;
 }
-//[END OF SECTION: CUSTOM FILE OP]
 
 
 int shred_file(char* sTargetFile)
