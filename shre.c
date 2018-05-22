@@ -49,25 +49,9 @@ char* repeat_char(const char _c, const int nCount, const int isRawData)
 }
 
 
-size_t file_get_size(char* sTargetFile)
+void sremove(char* sTargetPath)
 {
-	size_t Sz;
-	FILE *_fp;
-	_fp = fopen(sTargetFile, "rb");
-	if (_fp == NULL)
-	{
-		printf("problem opening file.\n");
-		return 0;
-	}
-	fseek(_fp, 0, SEEK_END);
-	Sz = ftell(_fp);
-	fclose(_fp);
-	return Sz;  //in bytes
-}
-
-
-void remove_file(char* sTargetPath)
-{
+	//scramble file/dir's name before deleting it.
 	char* sOldFileDir = get_file_dir(sTargetPath, 1);
 	char* sNewFileName = repeat_char('a', (int)(strlen(get_file_name(sTargetPath))), 0);
 	char* sNewFilePath = str_cat(sOldFileDir, sNewFileName);
@@ -120,38 +104,38 @@ int shred_file(char* sTargetFile)
 	return 0;
 }
 
-void shred_dir(char* path, int isRecursive, int isDelete)
+int shred_dir(char* path, int isRecursive, int isDelete)
 {
     //recursive
     DIR *hStream ;
     if (!(hStream = opendir(path)))
-        return;
+        return -1;
     struct dirent *entry;
     char* sFullEntryName;
+	int ret;
     while ((entry = readdir(hStream))){
-    sFullEntryName = malloc(strlen(entry->d_name) + strlen(path) + 2);
-    strcpy(sFullEntryName, path);
-    strcat(sFullEntryName, chr_to_str(c_separator()));
-    strcat(sFullEntryName, entry->d_name);
-    if ((entry->d_type == DT_DIR) && (isRecursive)){
-		if (strcmp(entry->d_name, "..") == 0 || (strcmp(entry->d_name, ".") == 0))
-				continue;
-		shred_dir(sFullEntryName, isRecursive, isDelete);
+		sFullEntryName = malloc(strlen(entry->d_name) + strlen(path) + 2);
+		strcpy(sFullEntryName, path);
+		strcat(sFullEntryName, chr_to_str(c_separator()));
+		strcat(sFullEntryName, entry->d_name);
+		if ((entry->d_type == DT_DIR) && (isRecursive)){
+			if (strcmp(entry->d_name, "..") == 0 || (strcmp(entry->d_name, ".") == 0))
+					continue;
+			ret = shred_dir(sFullEntryName, isRecursive, isDelete);
+		}
+		else if (entry->d_type == DT_REG){
+			//target entry is a file
+			printf("shredding file %s\n", sFullEntryName);
+			ret = shred_file(sFullEntryName);
+		}
+		if (isDelete)
+			sremove(sFullEntryName);
+		free(sFullEntryName);
     }
-    else if (entry->d_type == DT_REG){
-		//target entry is a file
-        printf("shredding file %s\n", sFullEntryName);
-        shred_file(sFullEntryName);
-    }
-	if (isDelete)
-		remove_file(sFullEntryName);
-    free(sFullEntryName);
 
-    }
     closedir(hStream);
-    return;
+    return ret;
 }
-
 
 
 void show_help(char* command)
@@ -160,10 +144,12 @@ void show_help(char* command)
 				"Author: sandwichdoge@gmail.com\n\n"
 				"usage     : %s <file/directory_path> [-r] [-d]\n"
 				"parameters:\n\n"
-				"-r:	recursive"
+				"-r:	recursive\n"
 				"-d:	scramble name and delete target after shredding.\n", command);
 	return;
 }
+
+
 
 void main(int argc, char **argv){
 	if (argc == 1 || strcmp(argv[1], "--help") == 0 || strstr(argv[1], "?")){
@@ -183,34 +169,40 @@ void main(int argc, char **argv){
 			isDelete = 1;
 	}
 
+
 	//target is a directory
-	char x[2];
-	printf("this will shred all files and subfolders within this directory. procceed? y/n.");
-	scanf("%s", x);
-	if (strcmp(x, "n") == 0)
-		return;
 	if (is_directory(sTargetPath)){
-		shred_dir(sTargetPath, isRecursive, isDelete);
-		printf("directory %s has been shredded, recursive = %d\n", sTargetPath, isRecursive);
+		char x;
+		int isSuccessful;
+		printf("this will shred all files and subfolders within this directory. procceed? y/n: ");
+		x = getchar();
+		if (x == 'y'){
+			isSuccessful = shred_dir(sTargetPath, isRecursive, isDelete);
+			(isSuccessful = -1) ? printf("failed to shred some data.\n") :
+			printf("operation on directory %s has completed, recursive = %d\n", sTargetPath, isRecursive);
+		}
 		return;
 	}
+	else
+		return;
+
 
 	//target is a file
-	size_t Sz = file_get_size(sTargetPath);
+	unsigned int Sz = file_get_size(sTargetPath);
 	if (Sz == 0){
 		printf("'%s' does not exist.\n", sTargetPath);
 		return;
 	}
 
 	printf("shredding file %s\n", sTargetPath);
-	printf("%zu bytes\n", Sz);
+	printf("%u bytes\n", Sz);
 
 	if (shred_file(sTargetPath) == -1)
 		printf("failed to shred file %s\n", sTargetPath);
 	else{
 		if (isDelete == 1){  //'-d' as argument -> rename and delete file
 			printf("scramling filename and removing file..\n");
-			remove_file(sTargetPath);
+			sremove(sTargetPath);
 		}
 	}
 	printf("finished shredding.\n");
