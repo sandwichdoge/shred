@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+#include <stdlib.h>
 #ifndef stringops
 #define stringops
 #endif
@@ -78,6 +79,23 @@ void list_dir(char* path)
     }
     closedir(hStream);
     return;
+}
+
+
+size_t file_get_size(char* sTargetFile)
+{
+	size_t Sz;
+	FILE *_fp;
+	_fp = fopen(sTargetFile, "rb");
+	if (_fp == NULL)
+	{
+		printf("problem opening file.\n");
+		return 0;
+	}
+	fseek(_fp, 0, SEEK_END);
+	Sz = ftell(_fp);
+	fclose(_fp);
+	return Sz;  //in bytes
 }
 /*
 void main(){
