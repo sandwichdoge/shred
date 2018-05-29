@@ -1,12 +1,18 @@
+#ifndef _DIRNAV_H
+#define _DIRNAV_H
+#endif
 #include <sys/types.h>
-#include <dirent.h>
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
 #include <stdlib.h>
-#ifndef stringops
-#define stringops
+#ifdef _WIN32
+#include "dirent.h"
+#else
+#include <dirent.h>
 #endif
+#include "stringops.h"
+
 
 int is_directory(char* sPath)
 {
