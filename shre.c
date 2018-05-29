@@ -183,6 +183,8 @@ void main(int argc, char **argv){
 		}
 		return;
 	}
+	else
+		return;
 
 
 	//target is a file
