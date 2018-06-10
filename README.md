@@ -3,7 +3,7 @@ Securely scramble file without truncating it
 
 Compile:
 ```
-gcc -o <prog_name> shre.c stringops.c
+gcc -o <prog_name> shre.c
 ```
 
 Usage:
